@@ -16,11 +16,11 @@ public class Table {
         }
     }
 
-    public void getLeftChopstick(int n) throws InterruptedException {
-        chopstick[n].acquire();
+    public boolean tryGetLeftChopstick(int n) throws InterruptedException {
+        return chopstick[n].tryAcquire();
     }
 
-    public boolean getRightChopstick(int n) throws InterruptedException {
+    public boolean tryGetRightChopstick(int n) throws InterruptedException {
         int pos = (n + 1) % nbrOfChopsticks;
         return chopstick[pos].tryAcquire();
     }

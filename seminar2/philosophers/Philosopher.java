@@ -13,6 +13,20 @@ public class Philosopher implements Runnable {
         myTable = table;
     }
 
+    private void getLeftChopstick() throws InterruptedException {
+        while (!myTable.tryGetLeftChopstick(myId)) {
+            Thread.sleep((int) (Math.random() * 10));
+        }
+    }
+
+    private void getRightChopstick() throws InterruptedException {
+        while (!myTable.tryGetRightChopstick(myId)) {
+            myTable.releaseLeftChopstick(myId);
+            Thread.sleep((int) (Math.random() * 10));
+            getLeftChopstick();
+        }
+    }
+
     @Override
     public void run() {
         for (int i = 0; i < 100; i++) {
@@ -21,16 +35,11 @@ public class Philosopher implements Runnable {
                 System.out.println("Philosopher " + myId + " thinks. Iteration " + i);
                 Thread.sleep((int) (Math.random() * 100));
 
-                myTable.getLeftChopstick(myId);
+                getLeftChopstick();
                 System.out.println("Philosopher " + myId + " pick up left");
                 Thread.sleep((int) (Math.random() * 100));
 
-                while (!myTable.getRightChopstick(myId)) {
-                    myTable.releaseLeftChopstick(myId);
-                    Thread.sleep((int) (Math.random() * 10));
-                    myTable.getLeftChopstick(myId);
-                }
-
+                getRightChopstick();
                 System.out.println("Philosopher " + myId + " pick up right");
 
                 System.out.println("Philosopher " + myId + " eats. Iteration " + i);
