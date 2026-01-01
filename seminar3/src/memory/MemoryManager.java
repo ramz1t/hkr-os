@@ -3,123 +3,157 @@ package memory;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.ArrayDeque;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Queue;
 
 public class MemoryManager {
 
-	private int myNumberOfPages;
-	private int myPageSize; // In bytes
-	private int myNumberOfFrames;
-	private int[] myPageTable; // -1 if page is not in physical memory
-	private byte[] myRAM; // physical memory RAM
-	private RandomAccessFile myPageFile;
-	private int myNextFreeFramePosition = 0;
-	private int myNumberOfpageFaults = 0;
-	private int myPageReplacementAlgorithm = 0;
+    private int myNumberOfPages;
+    private int myPageSize; // In bytes
+    private int myNumberOfFrames;
+    private int[] myPageTable; // -1 if page is not in physical memory
+    private byte[] myRAM; // physical memory RAM
+    private RandomAccessFile myPageFile;
+    private int myNextFreeFramePosition = 0;
+    private int myNumberOfpageFaults = 0;
+    private int myPageReplacementAlgorithm = 0;
+    private Queue<Integer> fifoQueue = new ArrayDeque<>();
+    private Map<Integer, Long> lruTimestamps = new HashMap<>();
+    private long time = 0;
 
-	public MemoryManager(int numberOfPages, int pageSize, int numberOfFrames, String pageFile,
-			int pageReplacementAlgorithm) {
+    public MemoryManager(int numberOfPages, int pageSize, int numberOfFrames, String pageFile,
+            int pageReplacementAlgorithm) {
 
-		myNumberOfPages = numberOfPages;
-		myPageSize = pageSize;
-		myNumberOfFrames = numberOfFrames;
-		myPageReplacementAlgorithm = pageReplacementAlgorithm;
+        myNumberOfPages = numberOfPages;
+        myPageSize = pageSize;
+        myNumberOfFrames = numberOfFrames;
+        myPageReplacementAlgorithm = pageReplacementAlgorithm;
 
-		initPageTable();
-		myRAM = new byte[myNumberOfFrames * myPageSize];
+        initPageTable();
+        myRAM = new byte[myNumberOfFrames * myPageSize];
 
-		try {
+        try {
 
-			myPageFile = new RandomAccessFile(pageFile, "r");
+            myPageFile = new RandomAccessFile(pageFile, "r");
 
-		} catch (FileNotFoundException ex) {
-			System.out.println("Can't open page file: " + ex.getMessage());
-		}
-	}
+        } catch (FileNotFoundException ex) {
+            System.out.println("Can't open page file: " + ex.getMessage());
+        }
+    }
 
-	private void initPageTable() {
-		myPageTable = new int[myNumberOfPages];
-		for (int n = 0; n < myNumberOfPages; n++) {
-			myPageTable[n] = -1;
-		}
-	}
+    private void initPageTable() {
+        myPageTable = new int[myNumberOfPages];
+        for (int n = 0; n < myNumberOfPages; n++) {
+            myPageTable[n] = -1;
+        }
+    }
 
-	public byte readFromMemory(int logicalAddress) {
-		int pageNumber = getPageNumber(logicalAddress);
-		int offset = getPageOffset(logicalAddress);
+    public byte readFromMemory(int logicalAddress) {
+        int pageNumber = getPageNumber(logicalAddress);
+        int offset = getPageOffset(logicalAddress);
 
-		if (myPageTable[pageNumber] == -1) {
-			pageFault(pageNumber);
-		}
+        lruTimestamps.put(pageNumber, ++time);
 
-		int frame = myPageTable[pageNumber];
-		int physicalAddress = frame * myPageSize + offset;
-		byte data = myRAM[physicalAddress];
+        if (myPageTable[pageNumber] == -1) {
+            pageFault(pageNumber);
+        }
 
-		System.out.print("Virtual address: " + logicalAddress);
-		System.out.print(" Physical address: " + physicalAddress);
-		System.out.println(" Value: " + data);
-		return data;
-	}
+        int frame = myPageTable[pageNumber];
+        int physicalAddress = frame * myPageSize + offset;
+        byte data = myRAM[physicalAddress];
 
-	private int getPageNumber(int logicalAddress) {
-		// Implement by student in task one
-		return 0;
-	}
+        System.out.print("Virtual address: " + logicalAddress);
+        System.out.print(" Physical address: " + physicalAddress);
+        System.out.println(" Value: " + data);
+        return data;
+    }
 
-	private int getPageOffset(int logicalAddress) {
-		// Implement by student in task one
-		return 0;
-	}
+    private int getPageNumber(int logicalAddress) {
+        return logicalAddress / myPageSize;
+    }
 
-	private void pageFault(int pageNumber) {
-		if (myPageReplacementAlgorithm == Seminar3.NO_PAGE_REPLACEMENT)
-			handlePageFault(pageNumber);
+    private int getPageOffset(int logicalAddress) {
+        return logicalAddress % myPageSize;
+    }
 
-		if (myPageReplacementAlgorithm == Seminar3.FIFO_PAGE_REPLACEMENT)
-			handlePageFaultFIFO(pageNumber);
+    private void pageFault(int pageNumber) {
+        if (myPageReplacementAlgorithm == Seminar3.NO_PAGE_REPLACEMENT) {
+            handlePageFault(pageNumber);
+        }
 
-		if (myPageReplacementAlgorithm == Seminar3.LRU_PAGE_REPLACEMENT)
-			handlePageFaultLRU(pageNumber);
+        if (myPageReplacementAlgorithm == Seminar3.FIFO_PAGE_REPLACEMENT) {
+            handlePageFaultFIFO(pageNumber);
+        }
 
-		readFromPageFileToMemory(pageNumber);
-	}
+        if (myPageReplacementAlgorithm == Seminar3.LRU_PAGE_REPLACEMENT) {
+            handlePageFaultLRU(pageNumber);
+        }
 
-	private void readFromPageFileToMemory(int pageNumber) {
-		try {
-			int frame = myPageTable[pageNumber];
-			myPageFile.seek(pageNumber * myPageSize);
-			for (int b = 0; b < myPageSize; b++)
-				myRAM[frame * myPageSize + b] = myPageFile.readByte();
-		} catch (IOException ex) {
+        readFromPageFileToMemory(pageNumber);
+    }
 
-		}
-	}
+    private void readFromPageFileToMemory(int pageNumber) {
+        try {
+            int frame = myPageTable[pageNumber];
+            myPageFile.seek(pageNumber * myPageSize);
+            for (int b = 0; b < myPageSize; b++) {
+                myRAM[frame * myPageSize + b] = myPageFile.readByte();
+            }
+        } catch (IOException ex) {
 
-	public int getNumberOfPageFaults() {
-		return myNumberOfpageFaults;
-	}
+        }
+    }
 
-	private void handlePageFault(int pageNumber) {
-		// Implement by student in task one
-		// This is the simple case where we assume same size of physical and logical
-		// memory
-		// nextFreeFramePosition is used to point to next free frame position
+    public int getNumberOfPageFaults() {
+        return myNumberOfpageFaults;
+    }
 
-	}
+    private void handlePageFault(int pageNumber) {
+        myNumberOfpageFaults++;
+        myPageTable[pageNumber] = myNextFreeFramePosition;
+        myNextFreeFramePosition++;
+    }
 
-	private void handlePageFaultFIFO(int pageNumber) {
-		// Implement by student in task two
-		// this solution allows different size of physical and logical memory
-		// page replacement using FIFO
-		// Note depending on your solution, you might need to change parts of the
-		// supplied code, this is allowed.
-	}
+    private void handlePageFaultFIFO(int pageNumber) {
+        myNumberOfpageFaults++;
+        int frame;
 
-	private void handlePageFaultLRU(int pageNumber) {
-		// Implement by student in task three
-		// this solution allows different size of physical and logical memory
-		// page replacement using LRU
-		// Note depending on your solution, you might need to change parts of the
-		// supplied code, this is allowed.
-	}
+        if (myNextFreeFramePosition < myNumberOfFrames) {
+            frame = myNextFreeFramePosition++;
+        } else {
+            int oldPage = fifoQueue.poll();
+            frame = myPageTable[oldPage];
+            myPageTable[oldPage] = -1;
+        }
+
+        myPageTable[pageNumber] = frame;
+        fifoQueue.add(pageNumber);
+    }
+
+    private void handlePageFaultLRU(int pageNumber) {
+        myNumberOfpageFaults++;
+        int frame;
+
+        if (myNextFreeFramePosition < myNumberOfFrames) {
+            frame = myNextFreeFramePosition++;
+        } else {
+            int lruPage = -1;
+            long oldest = Long.MAX_VALUE;
+            for (var entry : lruTimestamps.entrySet()) {
+                int p = entry.getKey();
+                if (myPageTable[p] != -1 && entry.getValue() < oldest) {
+                    oldest = entry.getValue();
+                    lruPage = p;
+                }
+            }
+            frame = myPageTable[lruPage];
+            myPageTable[lruPage] = -1;
+            lruTimestamps.remove(lruPage);
+        }
+
+        myPageTable[pageNumber] = frame;
+        lruTimestamps.put(pageNumber, ++time);
+    }
 }

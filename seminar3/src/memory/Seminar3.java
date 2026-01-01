@@ -17,11 +17,9 @@ public class Seminar3 {
     public static final int LRU_PAGE_REPLACEMENT = 2;
 
     public static void main(String[] args) {
-        // When running the code for the first time, you will get index out of bounds
-        // This is due to that getPageNumber(), getPageOffset() and handlePageFault() is not implemented in MemoryManager.class
         testTaskOne();
-        //testTaskTwo(); // Uncomment to run tc
-        //testTaskThree();	// Uncomment to run tc
+        testTaskTwo();
+        testTaskThree();
     }
 
     private static void testTaskOne() {
@@ -36,8 +34,8 @@ public class Seminar3 {
         System.out.println("Expected: " + "244");
 
         if (numberOfPageFaults == 244) {
-            System.out.println("Pass"); 
-        }else {
+            System.out.println("Pass");
+        } else {
             System.out.println("Assertion Fail");
         }
 
@@ -75,8 +73,8 @@ public class Seminar3 {
         System.out.println("Expected: " + expectedPageFaults);
 
         if (numberOfPageFaults == expectedPageFaults) {
-            System.out.println("Pass"); 
-        }else {
+            System.out.println("Pass");
+        } else {
             System.out.println("Assertion Fail");
         }
 
@@ -89,8 +87,8 @@ public class Seminar3 {
         System.out.println("Expected: " + expectedPageFaults);
 
         if (numberOfPageFaults == expectedPageFaults) {
-            System.out.println("Pass"); 
-        }else {
+            System.out.println("Pass");
+        } else {
             System.out.println("Assertion Fail");
         }
 
